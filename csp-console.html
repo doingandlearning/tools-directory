@@ -1,0 +1,599 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CSP Console — Content-Security-Policy demo</title>
+<style>
+  :root{
+    --bg: #11151c;
+    --panel: #1a212b;
+    --panel-raised: #20293a;
+    --border: #2c3744;
+    --text: #d7dee6;
+    --text-dim: #8a96a3;
+    --text-faint: #5c6776;
+    --accent: #e8a23d;
+    --accent-dim: #6b5226;
+    --allow: #3ecf8e;
+    --allow-bg: #143228;
+    --block: #f0616d;
+    --block-bg: #3a1a1f;
+    --url: #6ea8fe;
+    --radius: 8px;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, Helvetica, Arial, sans-serif;
+    --mono: "JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  @media (prefers-reduced-motion: reduce){
+    *{ transition: none !important; }
+  }
+  *{ box-sizing: border-box; }
+  body{
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    padding: 28px 20px 48px;
+  }
+  .csp-app{
+    max-width: 1080px;
+    margin: 0 auto;
+  }
+  .eyebrow{
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.12em;
+    color: var(--accent);
+    margin: 0 0 6px;
+    text-transform: uppercase;
+  }
+  h1{
+    margin: 0 0 10px;
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+  .dek{
+    margin: 0 0 24px;
+    color: var(--text-dim);
+    font-size: 15px;
+    line-height: 1.5;
+    max-width: 720px;
+  }
+  .toggle-row{
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 18px;
+    padding-bottom: 18px;
+    border-bottom: 1px solid var(--border);
+  }
+  .switch{
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--text);
+    cursor: pointer;
+    user-select: none;
+  }
+  .switch input{ accent-color: var(--accent); width: 16px; height: 16px; }
+  .presets{
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-left: auto;
+  }
+  .presets button{
+    font-family: var(--sans);
+    font-size: 12.5px;
+    color: var(--text);
+    background: var(--panel-raised);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 7px 13px;
+    cursor: pointer;
+    transition: border-color 120ms, color 120ms;
+  }
+  .presets button:hover{ border-color: var(--accent); color: var(--accent); }
+  .presets button:focus-visible{ outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .body-grid{
+    display: grid;
+    grid-template-columns: 340px 1fr;
+    gap: 20px;
+    align-items: start;
+  }
+  @media (max-width: 860px){
+    .body-grid{ grid-template-columns: 1fr; }
+  }
+
+  .panel{
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+  }
+
+  /* editor */
+  .editor{ padding: 16px; }
+  .group{
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .group:first-child{ padding-top: 0; }
+  .group:last-of-type{ border-bottom: none; }
+  .group__head{
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+  .group h3{
+    margin: 0;
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+  }
+  .group h3 .hint-inline{
+    font-family: var(--sans);
+    font-weight: 400;
+    font-size: 11.5px;
+    color: var(--text-faint);
+  }
+  .override-toggle{
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11.5px;
+    color: var(--text-dim);
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+  }
+  .override-toggle input{ accent-color: var(--accent); width: 14px; height: 14px; }
+  .chiprow{
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+  .chiprow label{
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-family: var(--mono);
+    font-size: 12.5px;
+    color: var(--text);
+    cursor: pointer;
+    padding: 3px 2px;
+    border-radius: 4px;
+  }
+  .chiprow input{ accent-color: var(--accent); width: 14px; height: 14px; flex-shrink: 0; }
+  .chiprow label.is-disabled{ color: var(--text-faint); cursor: default; }
+  .fallback-hint{
+    margin: 6px 0 0;
+    font-size: 11.5px;
+    color: var(--text-faint);
+    font-style: italic;
+  }
+
+  .header-line{
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid var(--border);
+  }
+  .header-line__label{
+    display: block;
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    margin-bottom: 6px;
+  }
+  .header-line__value{
+    display: block;
+    font-family: var(--mono);
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--text);
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px;
+    word-break: break-word;
+    white-space: pre-wrap;
+  }
+  .header-line__value .none{ color: var(--text-faint); font-style: italic; }
+  #copyHeader{
+    margin-top: 8px;
+    font-family: var(--sans);
+    font-size: 11.5px;
+    color: var(--text-dim);
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 5px 10px;
+    cursor: pointer;
+  }
+  #copyHeader:hover{ color: var(--accent); border-color: var(--accent); }
+
+  /* browser mock */
+  .browser__chrome{
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+  }
+  .dot{ width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+  .dot--red{ background: #5c4040; }
+  .dot--amber{ background: #5c4f33; }
+  .dot--green{ background: #3a4d3d; }
+  .browser__url{
+    font-family: var(--mono);
+    font-size: 12.5px;
+    color: var(--url);
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 4px 10px;
+    flex: 1;
+  }
+  .browser__page{
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .attempt-row{
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 9px 11px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--panel-raised);
+  }
+  .attempt-row__status{
+    font-size: 14px;
+    line-height: 1;
+    margin-top: 1px;
+    flex-shrink: 0;
+  }
+  .attempt-row.is-allowed{ border-color: rgba(62,207,142,0.35); }
+  .attempt-row.is-blocked{ border-color: rgba(240,97,109,0.35); }
+  .attempt-row.is-allowed .attempt-row__status{ color: var(--allow); }
+  .attempt-row.is-blocked .attempt-row__status{ color: var(--block); }
+  .attempt-row__text{ font-size: 13px; line-height: 1.4; }
+  .attempt-row__text code{
+    font-family: var(--mono);
+    font-size: 12px;
+    background: var(--bg);
+    border-radius: 4px;
+    padding: 1px 5px;
+  }
+  .attempt-row__badge{
+    margin-left: auto;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    padding: 2px 7px;
+    border-radius: 4px;
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+  .is-allowed .attempt-row__badge{ background: var(--allow-bg); color: var(--allow); }
+  .is-blocked .attempt-row__badge{ background: var(--block-bg); color: var(--block); }
+
+  .browser__console{
+    border-top: 1px solid var(--border);
+    padding: 12px 14px 16px;
+  }
+  .console__title{
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    margin-bottom: 8px;
+  }
+  .console-line{
+    font-family: var(--mono);
+    font-size: 12px;
+    line-height: 1.55;
+    padding: 4px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .console-line:last-child{ border-bottom: none; }
+  .console-line.err{ color: var(--block); }
+  .console-line.ok{ color: var(--text-faint); }
+
+  .footnote{
+    margin-top: 18px;
+    font-size: 12px;
+    color: var(--text-faint);
+    line-height: 1.5;
+  }
+</style>
+</head>
+<body>
+<div class="csp-app">
+
+  <p class="eyebrow">Content-Security-Policy</p>
+  <h1>CSP Console</h1>
+  <p class="dek">Build a policy on the left. The mock page and console on the right show exactly what the browser allows and blocks — including the message it would actually print.</p>
+
+  <div class="toggle-row">
+    <label class="switch">
+      <input type="checkbox" id="cspEnabled" checked>
+      Send a Content-Security-Policy header
+    </label>
+    <div class="presets" id="presets">
+      <button data-preset="none">No policy</button>
+      <button data-preset="strict">Strict: self only</button>
+      <button data-preset="cdn">Allow trusted CDN</button>
+      <button data-preset="inline">Allow inline (risky)</button>
+      <button data-preset="wildcard">script-src *</button>
+    </div>
+  </div>
+
+  <div class="body-grid">
+
+    <section class="panel editor">
+
+      <div class="group">
+        <div class="group__head">
+          <h3>default-src <span class="hint-inline">(applies when a directive below isn't overridden)</span></h3>
+        </div>
+        <div class="chiprow">
+          <label><input type="checkbox" data-group="default" value="'self'" checked> 'self'</label>
+          <label><input type="checkbox" data-group="default" value="'unsafe-inline'"> 'unsafe-inline'</label>
+          <label><input type="checkbox" data-group="default" value="'unsafe-eval'"> 'unsafe-eval'</label>
+          <label><input type="checkbox" data-group="default" value="https://trusted-cdn.example.com"> trusted-cdn.example.com</label>
+          <label><input type="checkbox" data-group="default" value="*"> *</label>
+        </div>
+      </div>
+
+      <div class="group">
+        <div class="group__head">
+          <h3>script-src</h3>
+          <label class="override-toggle"><input type="checkbox" id="scriptOverride"> override</label>
+        </div>
+        <div class="chiprow">
+          <label><input type="checkbox" data-group="script" value="'self'" disabled> 'self'</label>
+          <label><input type="checkbox" data-group="script" value="'unsafe-inline'" disabled> 'unsafe-inline'</label>
+          <label><input type="checkbox" data-group="script" value="'unsafe-eval'" disabled> 'unsafe-eval'</label>
+          <label><input type="checkbox" data-group="script" value="https://trusted-cdn.example.com" disabled> trusted-cdn.example.com</label>
+          <label><input type="checkbox" data-group="script" value="*" disabled> *</label>
+        </div>
+        <p class="fallback-hint" id="scriptFallback">Not set — falls back to default-src.</p>
+      </div>
+
+      <div class="group">
+        <div class="group__head">
+          <h3>style-src</h3>
+          <label class="override-toggle"><input type="checkbox" id="styleOverride"> override</label>
+        </div>
+        <div class="chiprow">
+          <label><input type="checkbox" data-group="style" value="'self'" disabled> 'self'</label>
+          <label><input type="checkbox" data-group="style" value="'unsafe-inline'" disabled> 'unsafe-inline'</label>
+          <label><input type="checkbox" data-group="style" value="*" disabled> *</label>
+        </div>
+        <p class="fallback-hint" id="styleFallback">Not set — falls back to default-src.</p>
+      </div>
+
+      <div class="group">
+        <div class="group__head">
+          <h3>img-src</h3>
+          <label class="override-toggle"><input type="checkbox" id="imgOverride"> override</label>
+        </div>
+        <div class="chiprow">
+          <label><input type="checkbox" data-group="img" value="'self'" disabled> 'self'</label>
+          <label><input type="checkbox" data-group="img" value="*" disabled> *</label>
+        </div>
+        <p class="fallback-hint" id="imgFallback">Not set — falls back to default-src.</p>
+      </div>
+
+      <div class="header-line">
+        <span class="header-line__label">Response header</span>
+        <code class="header-line__value" id="headerText"></code>
+        <button id="copyHeader" type="button">Copy header</button>
+      </div>
+
+    </section>
+
+    <section class="panel browser">
+      <div class="browser__chrome">
+        <span class="dot dot--red"></span><span class="dot dot--amber"></span><span class="dot dot--green"></span>
+        <span class="browser__url">https://example.com</span>
+      </div>
+      <div class="browser__page" id="pageMock"></div>
+      <div class="browser__console">
+        <div class="console__title">Console</div>
+        <div id="consoleMock"></div>
+      </div>
+    </section>
+
+  </div>
+
+  <p class="footnote">When script-src (or style-src, img-src) isn't set, the browser enforces — and reports violations against — default-src instead. That's why the directive named in a console message isn't always the one you'd expect.</p>
+
+</div>
+
+<script>
+(function(){
+  const DEMO_ORIGIN = "https://example.com";
+
+  const attempts = [
+    { id:"inline-script", type:"script", kind:"inline",
+      label:"Inline &lt;script&gt; block on the page — also what an injected XSS payload looks like once it lands" },
+    { id:"eval", type:"script", kind:"eval",
+      label:"Inline script calls <code>eval(userInput)</code> to run a string as code" },
+    { id:"self-script", type:"script", kind:"external", origin:DEMO_ORIGIN,
+      url:DEMO_ORIGIN+"/static/app.js",
+      label:"Script served from your own origin, <code>https://example.com/static/app.js</code>" },
+    { id:"cdn-script", type:"script", kind:"external", origin:"https://trusted-cdn.example.com",
+      url:"https://trusted-cdn.example.com/lib.js",
+      label:"Script loaded from a third-party CDN, <code>https://trusted-cdn.example.com/lib.js</code>" },
+    { id:"evil-script", type:"script", kind:"external", origin:"https://evil.attacker.example",
+      url:"https://evil.attacker.example/inject.js",
+      label:"Attacker tries to load <code>https://evil.attacker.example/inject.js</code>" },
+    { id:"inline-style", type:"style", kind:"inline",
+      label:"Inline style attribute, e.g. <code>&lt;div style=\"color:red\"&gt;</code>" },
+    { id:"self-img", type:"img", kind:"external", origin:DEMO_ORIGIN,
+      url:DEMO_ORIGIN+"/logo.png",
+      label:"Image served from your own origin, <code>https://example.com/logo.png</code>" },
+    { id:"evil-img", type:"img", kind:"external", origin:"https://evil.attacker.example",
+      url:"https://evil.attacker.example/pixel.gif",
+      label:"Tracking pixel from <code>https://evil.attacker.example/pixel.gif</code>" }
+  ];
+
+  const overrideKeys = { script:"scriptOverride", style:"styleOverride", img:"imgOverride" };
+
+  function getTokens(group){
+    return [...document.querySelectorAll('input[data-group="'+group+'"]:checked')].map(i => i.value);
+  }
+  function isOverridden(key){
+    return document.getElementById(overrideKeys[key]).checked;
+  }
+  function effective(type){
+    if (isOverridden(type)) return { name: type+"-src", tokens: getTokens(type) };
+    return { name: "default-src", tokens: getTokens("default") };
+  }
+  function fmtList(tokens){
+    return tokens.length ? tokens.join(" ") : "'none'";
+  }
+
+  function evaluate(attempt, cspEnabled){
+    if (!cspEnabled) return { allowed:true, directiveLabel:null };
+    const eff = effective(attempt.type);
+    const tokens = eff.tokens;
+    let allowed;
+    if (attempt.kind === "inline") allowed = tokens.includes("'unsafe-inline'");
+    else if (attempt.kind === "eval") allowed = tokens.includes("'unsafe-eval'");
+    else allowed = tokens.includes("*") || tokens.includes(attempt.origin) ||
+                    (tokens.includes("'self'") && attempt.origin === DEMO_ORIGIN);
+    return { allowed, directiveLabel: eff.name + " " + fmtList(tokens) };
+  }
+
+  function consoleLine(attempt, result){
+    if (result.allowed){
+      if (attempt.kind === "external") return { cls:"ok", text:"GET " + attempt.url + " 200 OK" };
+      if (attempt.kind === "eval") return { cls:"ok", text:"(eval executed without restriction)" };
+      if (attempt.type === "style") return { cls:"ok", text:"(inline style applied without restriction)" };
+      return { cls:"ok", text:"(inline script executed without restriction)" };
+    }
+    const d = result.directiveLabel;
+    if (attempt.kind === "inline" && attempt.type === "script")
+      return { cls:"err", text:'Refused to execute inline script because it violates the following Content Security Policy directive: "'+d+'". Either the \'unsafe-inline\' keyword, a hash, or a nonce is required to enable inline execution.' };
+    if (attempt.kind === "inline" && attempt.type === "style")
+      return { cls:"err", text:'Refused to apply inline style because it violates the following Content Security Policy directive: "'+d+'". Either the \'unsafe-inline\' keyword, a hash, or a nonce is required to enable inline execution.' };
+    if (attempt.kind === "eval")
+      return { cls:"err", text:"Refused to evaluate a string as JavaScript because 'unsafe-eval' is not an allowed source of script in the following Content Security Policy directive: \""+d+"\"." };
+    const noun = attempt.type === "img" ? "image" : "script";
+    return { cls:"err", text:"Refused to load the "+noun+" '"+attempt.url+"' because it violates the following Content Security Policy directive: \""+d+"\"." };
+  }
+
+  function headerString(cspEnabled){
+    if (!cspEnabled) return null;
+    const parts = ["default-src " + fmtList(getTokens("default"))];
+    ["script","style","img"].forEach(key=>{
+      if (isOverridden(key)) parts.push(key+"-src " + fmtList(getTokens(key)));
+    });
+    return "Content-Security-Policy: " + parts.join("; ") + ";";
+  }
+
+  function updateDisabledState(key){
+    const on = isOverridden(key);
+    document.querySelectorAll('input[data-group="'+key+'"]').forEach(cb=>{
+      cb.disabled = !on;
+      cb.closest("label").classList.toggle("is-disabled", !on);
+    });
+    document.getElementById(key+"Fallback").style.display = on ? "none" : "block";
+  }
+
+  function render(){
+    const cspEnabled = document.getElementById("cspEnabled").checked;
+
+    const headerEl = document.getElementById("headerText");
+    const h = headerString(cspEnabled);
+    headerEl.innerHTML = h ? h : '<span class="none">(no Content-Security-Policy header sent)</span>';
+
+    const pageMock = document.getElementById("pageMock");
+    const consoleMock = document.getElementById("consoleMock");
+    pageMock.innerHTML = "";
+    consoleMock.innerHTML = "";
+
+    attempts.forEach(attempt=>{
+      const result = evaluate(attempt, cspEnabled);
+      const line = consoleLine(attempt, result);
+
+      const row = document.createElement("div");
+      row.className = "attempt-row " + (result.allowed ? "is-allowed" : "is-blocked");
+      row.innerHTML =
+        '<span class="attempt-row__status">' + (result.allowed ? "&#10003;" : "&#10005;") + '</span>' +
+        '<span class="attempt-row__text">' + attempt.label + '</span>' +
+        '<span class="attempt-row__badge">' + (result.allowed ? "Allowed" : "Blocked") + '</span>';
+      pageMock.appendChild(row);
+
+      const cl = document.createElement("div");
+      cl.className = "console-line " + line.cls;
+      cl.textContent = line.text;
+      consoleMock.appendChild(cl);
+    });
+  }
+
+  document.getElementById("cspEnabled").addEventListener("change", render);
+  ["script","style","img"].forEach(key=>{
+    document.getElementById(overrideKeys[key]).addEventListener("change", ()=>{ updateDisabledState(key); render(); });
+  });
+  document.querySelectorAll('input[type="checkbox"][data-group]').forEach(cb=>{
+    cb.addEventListener("change", render);
+  });
+
+  document.getElementById("copyHeader").addEventListener("click", ()=>{
+    const h = headerString(document.getElementById("cspEnabled").checked) || "(no Content-Security-Policy header sent)";
+    navigator.clipboard && navigator.clipboard.writeText(h);
+  });
+
+  const presets = {
+    none:     { enabled:false },
+    strict:   { enabled:true, def:["'self'"], over:{ script:false, style:false, img:false } },
+    cdn:      { enabled:true, def:["'self'"], over:{ script:true, style:false, img:false },
+                vals:{ script:["'self'","https://trusted-cdn.example.com"] } },
+    inline:   { enabled:true, def:["'self'"], over:{ script:true, style:false, img:false },
+                vals:{ script:["'self'","'unsafe-inline'"] } },
+    wildcard: { enabled:true, def:["'self'"], over:{ script:true, style:false, img:false },
+                vals:{ script:["*"] } }
+  };
+
+  function setGroupValues(group, values){
+    document.querySelectorAll('input[data-group="'+group+'"]').forEach(cb=>{
+      cb.checked = values.includes(cb.value);
+    });
+  }
+
+  document.getElementById("presets").addEventListener("click", (e)=>{
+    const btn = e.target.closest("button[data-preset]");
+    if (!btn) return;
+    const p = presets[btn.dataset.preset];
+    document.getElementById("cspEnabled").checked = p.enabled;
+    if (p.enabled){
+      setGroupValues("default", p.def);
+      ["script","style","img"].forEach(key=>{
+        document.getElementById(overrideKeys[key]).checked = !!p.over[key];
+        setGroupValues(key, (p.vals && p.vals[key]) ? p.vals[key] : []);
+        updateDisabledState(key);
+      });
+    }
+    render();
+  });
+
+  ["script","style","img"].forEach(updateDisabledState);
+  render();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,6 @@
+[build]
+  publish = "."
+  command = "python3 build.py"
+
+[build.processing.html]
+  pretty_urls = true

@@ -1,0 +1,257 @@
+@import url("https://api.fontshare.com/v2/css?f[]=general-sans@400,500,600,700&display=swap");
+
+:root {
+  --site-green: #00692e;
+  --theme-text: black;
+  --theme-text-light: rgb(90, 86, 86);
+  --font-size-base: 1rem;
+  --chrome-bg: aliceblue;
+  --chrome-text: var(--theme-text);
+  --chrome-link: var(--site-green);
+  --chrome-border: rgba(0, 105, 46, 0.2);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  height: 100%;
+  font-family: sans-serif;
+  overflow-x: clip;
+}
+
+img,
+svg {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Index and listing pages */
+body:not(.tool-page) {
+  min-height: 100%;
+  margin: 0 auto;
+  width: 100%;
+  max-width: 90ch;
+  padding: 1rem;
+  line-height: 1.5;
+  background-color: var(--chrome-bg);
+  color: var(--theme-text);
+  overflow-x: clip;
+  display: flex;
+  flex-direction: column;
+}
+
+body:not(.tool-page) h1 {
+  margin: 1rem 0;
+  font-size: 2.5rem;
+}
+
+body:not(.tool-page) h2 {
+  font-size: 1.25rem;
+  margin: 1.5rem 0 0.75rem;
+}
+
+body:not(.tool-page) p {
+  font-size: var(--font-size-base);
+  line-height: 200%;
+  font-family: "General Sans", sans-serif;
+}
+
+body:not(.tool-page) a {
+  color: var(--site-green);
+  text-decoration: none;
+}
+
+body:not(.tool-page) a:hover {
+  text-decoration: underline;
+}
+
+body:not(.tool-page) ul,
+body:not(.tool-page) ol {
+  margin: 1.5em 0 1.5em 1.5em;
+  padding-left: 1.5em;
+  font-size: 1rem;
+  line-height: 1.7;
+}
+
+body:not(.tool-page) ul {
+  list-style-type: disc;
+}
+
+body:not(.tool-page) li {
+  margin-bottom: 0.5em;
+  padding-left: 0.25em;
+}
+
+body:not(.tool-page) ul li::marker {
+  color: var(--site-green);
+  font-size: 1.2em;
+}
+
+#page-container {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  width: 100%;
+  min-height: 100%;
+}
+
+#content-wrap {
+  flex: 1;
+}
+
+/* Header */
+header nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.home-link {
+  display: flex;
+  align-items: center;
+}
+
+.home-link img {
+  border-radius: 50%;
+  display: block;
+}
+
+.site-nav-link {
+  margin: 0;
+  font-family: "General Sans", sans-serif;
+  font-size: 1.1rem;
+}
+
+.site-chrome a,
+#page-container a {
+  color: var(--chrome-link);
+  text-decoration: none;
+}
+
+.site-chrome a:hover,
+#page-container a:hover {
+  text-decoration: underline;
+}
+
+/* Footer */
+footer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+  background: var(--site-green);
+  margin-left: calc(50% - 50vw);
+  margin-right: calc(50% - 50vw);
+  margin-top: auto;
+  max-width: none;
+  width: auto;
+  padding: 0.75rem 10px;
+  color: white;
+  font-size: 1rem;
+}
+
+footer a {
+  color: white;
+  text-decoration: none;
+  text-transform: uppercase;
+}
+
+footer a:hover {
+  text-decoration: underline;
+}
+
+footer p {
+  margin: 0;
+  line-height: 1.5;
+  color: white;
+  font-family: sans-serif;
+}
+
+/* Index: recent tools */
+.recent-container {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+  margin: 1.5rem 0;
+}
+
+@media (max-width: 640px) {
+  .recent-container {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+}
+
+.recent-list,
+.all-tools {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.recent-list li,
+.all-tools li {
+  margin: 0.35rem 0;
+  padding-left: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+.recent-list li::marker,
+.all-tools li::marker {
+  content: none;
+}
+
+.recent-date,
+.tool-title {
+  color: var(--theme-text-light);
+  font-family: "General Sans", sans-serif;
+}
+
+/* Tool pages */
+body.tool-page {
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  /* Tool HTML sets --bg, --text, --border, --accent on :root */
+  --chrome-bg: var(--bg, #11151c);
+  --chrome-text: var(--text, #d7dee6);
+  --chrome-link: var(--accent, #3ecf8e);
+  --chrome-border: var(--border, #2c3744);
+}
+
+body.tool-page> :not(.site-chrome):not(.tool-chrome-footer) {
+  flex: 1;
+  padding: 28px 20px 48px;
+}
+
+.site-chrome {
+  background: var(--chrome-bg);
+  color: var(--chrome-text);
+  padding: 1rem 20px 0.75rem;
+  border-bottom: 1px solid var(--chrome-border);
+  flex-shrink: 0;
+}
+
+.tool-chrome-footer {
+  margin-top: auto;
+  padding: 0.75rem 0 0;
+  background: var(--chrome-bg);
+  color: var(--chrome-text);
+  border-top: 1px solid var(--chrome-border);
+  flex-shrink: 0;
+}
+
+body.tool-page .site-chrome a {
+  color: var(--chrome-link);
+}
+
+body.tool-page .site-chrome .site-nav-link {
+  color: var(--chrome-text);
+}
