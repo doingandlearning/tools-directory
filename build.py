@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build index.html, tools.json, and clean-URL tool pages from root *.html sources."""
+"""Build index.html, tools.json, and clean-URL tool pages from src/*.html sources."""
 
 from __future__ import annotations
 
@@ -12,6 +12,7 @@ from html import escape
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
+SRC_DIR = ROOT / "src"
 TEMPLATES_DIR = ROOT / "templates"
 ASSETS_DIR = ROOT / "assets"
 README_PATH = ROOT / "README.md"
@@ -104,11 +105,7 @@ def extract_title(html_path: Path) -> str:
 
 
 def discover_tool_sources() -> list[Path]:
-    return sorted(
-        path
-        for path in ROOT.glob("*.html")
-        if path.name != "index.html" and path.is_file()
-    )
+    return sorted(path for path in SRC_DIR.glob("*.html") if path.is_file())
 
 
 def build_tools_json(sources: list[Path]) -> list[dict]:
@@ -280,8 +277,18 @@ def build_redirects(sources: list[Path]) -> None:
     lines = ["/index.html / 301"]
     for source in sources:
         slug = source.stem
+        # Legacy links to flat .html files (no longer published).
         lines.append(f"/{slug}.html /{slug} 301")
     REDIRECTS_PATH.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def remove_stale_root_tool_html(sources: list[Path]) -> None:
+    """Drop root-level tool .html files so hosts don't serve them instead of slug/index.html."""
+    for source in sources:
+        stale = ROOT / source.name
+        if stale.exists():
+            stale.unlink()
+            print(f"Removed stale publish file: {stale.name}")
 
 
 def copy_assets() -> None:
@@ -300,6 +307,8 @@ def copy_assets() -> None:
 def main() -> None:
     if not TEMPLATES_DIR.exists():
         raise FileNotFoundError("templates/ directory is required")
+    if not SRC_DIR.exists():
+        raise FileNotFoundError("src/ directory is required")
     if not (ASSETS_DIR / "css" / "site.css").exists():
         raise FileNotFoundError("assets/css/site.css is required")
 
@@ -309,6 +318,7 @@ def main() -> None:
     TOOLS_JSON_PATH.write_text(json.dumps(tools, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     build_index(tools)
     build_clean_url_pages(sources)
+    remove_stale_root_tool_html(sources)
     build_redirects(sources)
     print(f"Built index with {len(tools)} tool(s).")
     for tool in tools:
