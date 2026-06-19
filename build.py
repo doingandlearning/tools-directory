@@ -108,11 +108,32 @@ def discover_tool_sources() -> list[Path]:
     return sorted(path for path in SRC_DIR.glob("*.html") if path.is_file())
 
 
+def load_existing_tools() -> dict[str, dict]:
+    if not TOOLS_JSON_PATH.exists():
+        return {}
+    try:
+        tools = json.loads(TOOLS_JSON_PATH.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return {}
+    return {tool["slug"]: tool for tool in tools if tool.get("slug")}
+
+
 def build_tools_json(sources: list[Path]) -> list[dict]:
+    existing = load_existing_tools()
     tools: list[dict] = []
     for source in sources:
         slug = source.stem
         created, updated = get_file_commit_dates(source)
+        prior = existing.get(slug, {})
+
+        if prior.get("created"):
+            created = prior["created"]
+        elif created is None:
+            created = datetime.now().astimezone().isoformat()
+
+        if updated is None:
+            updated = prior.get("updated") or created
+
         tools.append(
             {
                 "filename": source.name,

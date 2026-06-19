@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TF-IDF in Action</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #1a2433;
+    --surface-2: #212d3f;
+    --border: #5a6d84;
+    --text: #f3f6fa;
+    --text-secondary: #d4dde8;
+    --muted: #b8c5d4;
+    --dim: #c5d0dc;
+    --accent: #60a5fa;
+    --accent-2: #a78bfa;
+    --good: #4ade80;
+    --good-strong: #bbf7d0;
+    --warn: #fbbf24;
+    --danger: #f87171;
+    --cell-miss: #9aacbf;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --sans: system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    line-height: 1.5;
+  }
+
+  .tool-app {
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  .hero { margin-bottom: 1.5rem; }
+  .hero h1 { font-size: 1.35rem; font-weight: 700; margin-bottom: 0.35rem; }
+  .hero p { font-size: 0.9rem; color: var(--text-secondary); max-width: 62ch; }
+
+  .formula-strip {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-bottom: 1.25rem;
+  }
+  .formula {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.55rem 0.85rem;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+  }
+  .formula code {
+    font-family: var(--mono);
+    color: var(--text);
+    font-size: 0.78rem;
+  }
+
+  .section-label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 0.55rem;
+  }
+
+  .doc-list { display: flex; flex-direction: column; gap: 0.55rem; margin-bottom: 1.25rem; }
+  .doc {
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    padding: 0.75rem 0.9rem;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .doc:hover { border-color: #60a5fa; }
+  .doc.active { border-color: var(--accent); background: #1a2a45; }
+  .doc-head { display: flex; align-items: flex-start; gap: 0.65rem; }
+  .doc-badge {
+    font-size: 0.68rem;
+    font-weight: 700;
+    background: #4a5d73;
+    color: var(--text);
+    border-radius: 4px;
+    padding: 0.15rem 0.45rem;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .doc.active .doc-badge { background: var(--accent); color: #fff; }
+  .doc-text { font-size: 0.82rem; color: var(--text-secondary); }
+  .token-viz { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.55rem; }
+  .token {
+    border-radius: 5px;
+    padding: 0.2rem 0.55rem;
+    font-size: 0.72rem;
+    font-family: var(--mono);
+    border: 1.5px solid transparent;
+    cursor: pointer;
+    transition: transform 0.12s, box-shadow 0.12s;
+  }
+  .token:hover { transform: translateY(-1px); }
+  .token.selected { box-shadow: 0 0 0 2px #fff; transform: scale(1.05); }
+  .token.dimmed { color: var(--cell-miss); border-color: var(--cell-miss); background: rgba(154, 172, 191, 0.12); }
+
+  .main-grid {
+    display: grid;
+    grid-template-columns: 1.2fr 0.8fr;
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+  @media (max-width: 860px) {
+    .main-grid { grid-template-columns: 1fr; }
+    .panel-row { grid-template-columns: 1fr !important; }
+  }
+
+  .panel {
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    padding: 1rem;
+  }
+  .panel-title {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 0.75rem;
+  }
+
+  .matrix-wrap { overflow-x: auto; }
+  table.matrix {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.75rem;
+    font-family: var(--mono);
+  }
+  .matrix th, .matrix td {
+    border: 1px solid var(--border);
+    padding: 0.35rem 0.45rem;
+    text-align: center;
+    white-space: nowrap;
+  }
+  .matrix th {
+    background: var(--surface-2);
+    color: var(--text-secondary);
+    font-weight: 600;
+  }
+  .matrix th.word-col, .matrix td.word-col {
+    text-align: left;
+    position: sticky;
+    left: 0;
+    background: var(--surface);
+    z-index: 1;
+    cursor: pointer;
+  }
+  .matrix tr:hover td { background: rgba(59, 130, 246, 0.08); }
+  .matrix tr.selected td { background: rgba(59, 130, 246, 0.16); }
+  .matrix tr.selected td.word-col { background: #1e3358; }
+  .cell-hit {
+    background: rgba(34, 197, 94, 0.28);
+    color: var(--good-strong);
+    font-weight: 700;
+  }
+  .cell-miss { color: var(--cell-miss); }
+  .cell-active-col { outline: 1px solid var(--accent); outline-offset: -1px; }
+  .idf-high { color: var(--good-strong); }
+  .idf-low { color: #fecaca; }
+
+  .spotlight { min-height: 220px; }
+  .spotlight-empty {
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    padding: 1.5rem 0.5rem;
+    text-align: center;
+  }
+  .spotlight-word {
+    font-family: var(--mono);
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: var(--good);
+    margin-bottom: 0.75rem;
+  }
+  .calc-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.75rem;
+    font-size: 0.8rem;
+    padding: 0.35rem 0;
+    border-bottom: 1px solid rgba(51, 65, 85, 0.6);
+  }
+  .calc-row:last-child { border-bottom: none; font-weight: 700; color: var(--good); }
+  .calc-label { color: var(--text-secondary); }
+  .calc-val { font-family: var(--mono); color: var(--text); }
+  .calc-formula {
+    margin-top: 0.75rem;
+    padding: 0.65rem 0.75rem;
+    background: var(--bg);
+    border-radius: 6px;
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    line-height: 1.6;
+  }
+
+  .panel-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+
+  .word-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.45rem;
+    font-size: 0.75rem;
+    cursor: pointer;
+    border-radius: 4px;
+    padding: 0.1rem 0.2rem;
+  }
+  .word-row:hover { background: rgba(255,255,255,0.04); }
+  .word-row.selected { background: rgba(59, 130, 246, 0.15); }
+  .word-row.not-in-doc { color: var(--cell-miss); }
+  .word-row.not-in-doc .word-label,
+  .word-row.not-in-doc .bar-val { color: var(--cell-miss); }
+  .word-label {
+    width: 5.5rem;
+    color: var(--text-secondary);
+    font-family: var(--mono);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .bar-wrap {
+    flex: 1;
+    background: var(--bg);
+    border-radius: 3px;
+    height: 14px;
+    overflow: hidden;
+  }
+  .bar { height: 14px; border-radius: 3px; transition: width 0.35s ease; }
+  .bar-tf { background: var(--accent); }
+  .bar-idf { background: var(--accent-2); }
+  .bar-tfidf { background: var(--good); }
+  .bar-val {
+    width: 2.6rem;
+    text-align: right;
+    color: var(--muted);
+    font-size: 0.68rem;
+    font-family: var(--mono);
+  }
+
+  .legend { display: flex; gap: 1rem; margin-bottom: 0.65rem; flex-wrap: wrap; }
+  .legend-item { display: flex; align-items: center; gap: 0.35rem; font-size: 0.75rem; color: var(--text-secondary); }
+  .legend-dot { width: 9px; height: 9px; border-radius: 2px; }
+
+  .insight-box {
+    background: #12321f;
+    border: 1.5px solid #22a858;
+    border-radius: 10px;
+    padding: 0.9rem 1rem;
+    font-size: 0.84rem;
+    color: var(--good-strong);
+    line-height: 1.65;
+  }
+  .insight-box strong { color: #ecfdf5; }
+</style>
+</head>
+<body>
+
+<div class="tool-app">
+  <div class="hero">
+    <h1>TF-IDF in Action</h1>
+    <p>Select a document, then click any word to see how term frequency and inverse document frequency combine. Green cells in the matrix mean the word appears in that document.</p>
+  </div>
+
+  <div class="formula-strip">
+    <div class="formula">TF = <code>count(word) ÷ words in doc</code></div>
+    <div class="formula">DF = <code>docs containing word</code></div>
+    <div class="formula">IDF = <code>log(N ÷ DF)</code></div>
+    <div class="formula">TF-IDF = <code>TF × IDF</code></div>
+  </div>
+
+  <div class="section-label">Corpus (3 documents)</div>
+  <div class="doc-list" id="docList"></div>
+
+  <div class="main-grid">
+    <div class="panel">
+      <div class="panel-title">Document–term matrix (click a word)</div>
+      <div class="matrix-wrap" id="matrixWrap"></div>
+    </div>
+    <div class="panel spotlight" id="spotlight">
+      <div class="panel-title">Calculation for selected word</div>
+      <div class="spotlight-empty">Click a word in the matrix or charts below.</div>
+    </div>
+  </div>
+
+  <div class="panel-row">
+    <div class="panel">
+      <div class="panel-title">Term frequency (this document)</div>
+      <div id="tfBars"></div>
+    </div>
+    <div class="panel">
+      <div class="panel-title">Inverse document frequency (whole corpus)</div>
+      <div id="idfBars"></div>
+    </div>
+    <div class="panel">
+      <div class="panel-title">TF-IDF (this document)</div>
+      <div class="legend">
+        <div class="legend-item"><div class="legend-dot" style="background:var(--good)"></div> Distinctive</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--border)"></div> Common / absent</div>
+      </div>
+      <div id="tfidfBars"></div>
+    </div>
+  </div>
+
+  <div class="insight-box" id="insight"></div>
+</div>
+
+<script>
+const docs = [
+  { label: "Doc 1", text: "This product is excellent, really excellent quality." },
+  { label: "Doc 2", text: "This product is terrible quality, really awful." },
+  { label: "Doc 3", text: "LuxeBrand shocking, I want a refund." },
+];
+
+const N = docs.length;
+
+function tokenise(text) {
+  return text.toLowerCase().replace(/[^a-z\s]/g, "").split(/\s+/).filter(Boolean);
+}
+
+const tokenised = docs.map((d) => tokenise(d.text));
+const allTokens = [...new Set(tokenised.flat())].sort();
+
+function countIn(token, tokens) {
+  return tokens.filter((t) => t === token).length;
+}
+
+function tf(token, tokens) {
+  return countIn(token, tokens) / tokens.length;
+}
+
+function df(token) {
+  return tokenised.filter((toks) => toks.includes(token)).length;
+}
+
+function idf(token) {
+  const d = df(token);
+  return d === 0 ? 0 : Math.log(N / d);
+}
+
+function tfidf(token, docIndex) {
+  return tf(token, tokenised[docIndex]) * idf(token);
+}
+
+const idfMap = Object.fromEntries(allTokens.map((t) => [t, idf(t)]));
+
+let activeDoc = 0;
+let selectedWord = null;
+
+function scoreColor(score, maxScore) {
+  const intensity = maxScore > 0 ? score / maxScore : 0;
+  if (intensity > 0.45) {
+    return {
+      text: "#ecfdf5",
+      border: "#4ade80",
+      bg: `rgba(34, 197, 94, ${0.2 + intensity * 0.22})`,
+    };
+  }
+  return {
+    text: "#d4dde8",
+    border: "#8fa3bc",
+    bg: "rgba(143, 163, 188, 0.2)",
+  };
+}
+
+function sortedWordsForDoc(docIndex) {
+  const tokens = tokenised[docIndex];
+  const inDoc = [...new Set(tokens)];
+  return inDoc.sort((a, b) => tfidf(b, docIndex) - tfidf(a, docIndex));
+}
+
+function sortedCorpusByIdf() {
+  return [...allTokens].sort((a, b) => idfMap[b] - idfMap[a]);
+}
+
+function renderBars(containerId, words, valueFn, maxVal, colorClass, { inDocOnly = false } = {}) {
+  const el = document.getElementById(containerId);
+  const tokens = tokenised[activeDoc];
+  el.innerHTML = "";
+
+  words.forEach((w) => {
+    const inDoc = tokens.includes(w);
+    if (inDocOnly && !inDoc) return;
+
+    const v = valueFn(w);
+    const pct = maxVal > 0 ? (v / maxVal) * 100 : 0;
+    const row = document.createElement("div");
+    row.className = "word-row" + (selectedWord === w ? " selected" : "") + (!inDoc ? " not-in-doc" : "");
+    row.innerHTML = `
+      <div class="word-label" title="${w}">${w}</div>
+      <div class="bar-wrap"><div class="bar ${colorClass}" style="width:${pct}%"></div></div>
+      <div class="bar-val">${v.toFixed(3)}</div>`;
+    row.addEventListener("click", () => selectWord(w));
+    el.appendChild(row);
+  });
+}
+
+function renderMatrix() {
+  const wrap = document.getElementById("matrixWrap");
+  const words = sortedCorpusByIdf();
+
+  let html = "<table class='matrix'><thead><tr><th class='word-col'>Word</th>";
+  docs.forEach((d, i) => {
+    const cls = i === activeDoc ? "cell-active-col" : "";
+    html += `<th class="${cls}">${d.label}</th>`;
+  });
+  html += "<th>DF</th><th>IDF</th></tr></thead><tbody>";
+
+  words.forEach((w) => {
+    const d = df(w);
+    const idfVal = idfMap[w];
+    const idfClass = d === 1 ? "idf-high" : d === N ? "idf-low" : "";
+    const rowCls = selectedWord === w ? "selected" : "";
+    html += `<tr class="${rowCls}" data-word="${w}"><td class="word-col">${w}</td>`;
+
+    tokenised.forEach((toks, i) => {
+      const c = countIn(w, toks);
+      const colCls = i === activeDoc ? "cell-active-col" : "";
+      if (c > 0) {
+        html += `<td class="cell-hit ${colCls}">${c}</td>`;
+      } else {
+        html += `<td class="cell-miss ${colCls}">·</td>`;
+      }
+    });
+
+    html += `<td>${d}</td><td class="${idfClass}">${idfVal.toFixed(3)}</td></tr>`;
+  });
+
+  html += "</tbody></table>";
+  wrap.innerHTML = html;
+
+  wrap.querySelectorAll("tr[data-word]").forEach((row) => {
+    row.addEventListener("click", () => selectWord(row.dataset.word));
+  });
+}
+
+function renderSpotlight() {
+  const el = document.getElementById("spotlight");
+  if (!selectedWord) {
+    el.innerHTML = `
+      <div class="panel-title">Calculation for selected word</div>
+      <div class="spotlight-empty">Click a word in the matrix or charts below.</div>`;
+    return;
+  }
+
+  const w = selectedWord;
+  const tokens = tokenised[activeDoc];
+  const c = countIn(w, tokens);
+  const tfVal = tf(w, tokens);
+  const d = df(w);
+  const idfVal = idfMap[w];
+  const score = tfVal * idfVal;
+  const inDoc = c > 0;
+
+  el.innerHTML = `
+    <div class="panel-title">Calculation for selected word</div>
+    <div class="spotlight-word">${w}</div>
+    <div class="calc-row"><span class="calc-label">In ${docs[activeDoc].label}</span><span class="calc-val">${inDoc ? `${c} occurrence${c > 1 ? "s" : ""}` : "not present (TF = 0)"}</span></div>
+    <div class="calc-row"><span class="calc-label">Document length</span><span class="calc-val">${tokens.length} words</span></div>
+    <div class="calc-row"><span class="calc-label">TF</span><span class="calc-val">${c} ÷ ${tokens.length} = ${tfVal.toFixed(3)}</span></div>
+    <div class="calc-row"><span class="calc-label">DF (corpus)</span><span class="calc-val">${d} of ${N} documents</span></div>
+    <div class="calc-row"><span class="calc-label">IDF</span><span class="calc-val">log(${N} ÷ ${d}) = ${idfVal.toFixed(3)}</span></div>
+    <div class="calc-row"><span class="calc-label">TF-IDF</span><span class="calc-val">${tfVal.toFixed(3)} × ${idfVal.toFixed(3)} = ${score.toFixed(3)}</span></div>
+    <div class="calc-formula">${explainWord(w, activeDoc)}</div>`;
+}
+
+function explainWord(word, docIndex) {
+  const d = df(word);
+  const score = tfidf(word, docIndex);
+  if (countIn(word, tokenised[docIndex]) === 0) {
+    return `"${word}" does not appear in this document, so TF-IDF is 0 here — even if it is distinctive elsewhere in the corpus.`;
+  }
+  if (d === N) {
+    return `"${word}" appears in every document, so IDF = log(1) = 0 and TF-IDF is always 0. It carries no discriminative signal.`;
+  }
+  if (d === 1) {
+    return `"${word}" appears in only one document, so IDF is maximised. Combined with its term frequency, it becomes a strong feature for this document.`;
+  }
+  return `"${word}" appears in ${d} documents, moderating its IDF. TF-IDF (${score.toFixed(3)}) balances how often it appears here against how common it is corpus-wide.`;
+}
+
+function renderInsight() {
+  const words = sortedWordsForDoc(activeDoc);
+  const top = words.find((w) => tfidf(w, activeDoc) > 0) || words[0];
+  const universal = allTokens.filter((w) => df(w) === N && tokenised[activeDoc].includes(w));
+  const unique = words.filter((w) => df(w) === 1);
+  const shared = words.filter((w) => df(w) > 1 && df(w) < N);
+
+  let html = `In <strong>${docs[activeDoc].label}</strong>, the highest TF-IDF score is <strong>"${top}"</strong> (${tfidf(top, activeDoc).toFixed(3)}). `;
+
+  if (unique.length) {
+    html += `Words unique to a single document — <strong>${unique.slice(0, 3).map((w) => `"${w}"`).join(", ")}</strong> — get the strongest IDF boost. `;
+  }
+  if (shared.length) {
+    html += `<strong>${shared[0]}</strong> appears in multiple documents, so its IDF is lower than a one-document word. `;
+  }
+  if (universal.length) {
+    html += `Corpus-wide words like <strong>${universal.slice(0, 3).map((w) => `"${w}"`).join(", ")}</strong> have IDF = 0 and drop out of the feature vector.`;
+  }
+
+  document.getElementById("insight").innerHTML = html;
+}
+
+function renderDocTokens() {
+  document.querySelectorAll(".doc-tokens").forEach((el, i) => {
+    const toks = [...new Set(tokenised[i])];
+    const maxScore = Math.max(...toks.map((t) => tfidf(t, i)), 0.001);
+    el.innerHTML = toks
+      .map((t) => {
+        const { text, border, bg } = scoreColor(tfidf(t, i), maxScore);
+        const cls =
+          selectedWord === null ? "" : selectedWord === t ? " selected" : " dimmed";
+        return `<span class="token${cls}" data-word="${t}" style="color:${text};border-color:${border};background:${bg}">${t}</span>`;
+      })
+      .join("");
+
+    el.querySelectorAll(".token").forEach((tok) => {
+      tok.addEventListener("click", (e) => {
+        e.stopPropagation();
+        selectWord(tok.dataset.word);
+        if (activeDoc !== i) setActiveDoc(i);
+      });
+    });
+  });
+}
+
+function selectWord(word) {
+  selectedWord = word;
+  render();
+}
+
+function setActiveDoc(index) {
+  activeDoc = index;
+  document.querySelectorAll(".doc").forEach((el, i) => {
+    el.classList.toggle("active", i === index);
+  });
+  render();
+}
+
+function render() {
+  const words = sortedWordsForDoc(activeDoc);
+  const corpusWords = sortedCorpusByIdf();
+  const tokens = tokenised[activeDoc];
+
+  const maxTf = Math.max(...words.map((w) => tf(w, tokens)), 0.001);
+  const maxIdf = Math.max(...Object.values(idfMap), 0.001);
+  const maxTfidf = Math.max(...words.map((w) => tfidf(w, activeDoc)), 0.001);
+
+  renderMatrix();
+  renderSpotlight();
+  renderBars("tfBars", words, (w) => tf(w, tokens), maxTf, "bar-tf");
+  renderBars("idfBars", corpusWords, (w) => idfMap[w], maxIdf, "bar-idf");
+  renderBars("tfidfBars", words, (w) => tfidf(w, activeDoc), maxTfidf, "bar-tfidf");
+  renderDocTokens();
+  renderInsight();
+}
+
+const docList = document.getElementById("docList");
+docs.forEach((d, i) => {
+  const div = document.createElement("div");
+  div.className = "doc" + (i === 0 ? " active" : "");
+  div.innerHTML = `
+    <div class="doc-head">
+      <span class="doc-badge">${d.label}</span>
+      <span class="doc-text">${d.text}</span>
+    </div>`;
+  const tokRow = document.createElement("div");
+  tokRow.className = "token-viz doc-tokens";
+  div.appendChild(tokRow);
+  div.addEventListener("click", () => setActiveDoc(i));
+  docList.appendChild(div);
+});
+
+selectWord("excellent");
+render();
+
+</script>
+</body>
+</html>
