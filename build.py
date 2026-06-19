@@ -21,7 +21,6 @@ INDEX_PATH = ROOT / "index.html"
 REDIRECTS_PATH = ROOT / "_redirects"
 
 BLOG_URL = "https://kevincunningham.co.uk/"
-LOGO_URL = "https://kevincunningham.co.uk/images/brain-Circle.jpg"
 SITE_TITLE = "Kevin Cunningham's Teaching Tools"
 
 
@@ -33,7 +32,7 @@ def render_template(name: str, **values: str) -> str:
 
 
 def render_header() -> str:
-    return render_template("header.html", blog_url=BLOG_URL, logo_url=LOGO_URL)
+    return render_template("header.html", blog_url=BLOG_URL, site_title=SITE_TITLE)
 
 
 def render_footer() -> str:
