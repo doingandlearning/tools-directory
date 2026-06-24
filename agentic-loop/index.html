@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agentic Loops</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;600&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:          #0c0b08;
+    --surface:     #131109;
+    --border:      #2a2416;
+    --text:        #d4c5a0;
+    --dim:         #7a6e50;
+    --amber:       #e09020;
+    --amber-dim:   #1c1400;
+    --amber-hi:    #f0b840;
+    --gold:        #b87820;
+    --gold-dim:    #181100;
+    --olive:       #7a9828;
+    --olive-dim:   #101800;
+    --orange:      #c06010;
+    --orange-dim:  #1c0e04;
+    --mono: 'IBM Plex Mono', monospace;
+    --sans: 'IBM Plex Sans', sans-serif;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.6;
+    min-height: 100vh;
+    padding: 2rem 1rem;
+  }
+
+  .page { max-width: 900px; margin: 0 auto; }
+
+  /* ── Header ─────────────────────────────────────────────────── */
+  .header {
+    margin-bottom: 3rem;
+    border-left: 3px solid var(--amber);
+    padding-left: 1.25rem;
+  }
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    color: var(--amber);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-bottom: 0.5rem;
+  }
+  .header h1 {
+    font-size: 2rem;
+    font-weight: 600;
+    color: #ecddb8;
+    line-height: 1.2;
+  }
+  .header p {
+    margin-top: 0.5rem;
+    color: var(--dim);
+    font-size: 0.9rem;
+    max-width: 52ch;
+  }
+
+  /* ── Insight banner ──────────────────────────────────────────── */
+  .insight {
+    background: var(--amber-dim);
+    border: 1px solid var(--amber);
+    border-radius: 6px;
+    padding: 0.9rem 1.2rem;
+    margin-bottom: 2.5rem;
+    font-family: var(--mono);
+    font-size: 0.8rem;
+    color: var(--amber-hi);
+    display: flex;
+    gap: 0.75rem;
+    align-items: flex-start;
+  }
+  .insight .label { opacity: 0.55; white-space: nowrap; }
+
+  /* ── Section label ───────────────────────────────────────────── */
+  .section-label {
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--dim);
+    margin-bottom: 1rem;
+  }
+
+  /* ── Diagram ─────────────────────────────────────────────────── */
+  .diagram { margin-bottom: 3rem; }
+
+  .flow {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  /* Nodes */
+  .node {
+    border: 1px solid;
+    border-radius: 6px;
+    padding: 0.9rem 1.2rem;
+    width: 100%;
+  }
+  .node .tag {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 0.2rem;
+    opacity: 0.65;
+  }
+  .node .title {
+    font-weight: 600;
+    font-size: 0.95rem;
+  }
+  .node .desc {
+    font-size: 0.8rem;
+    color: var(--dim);
+    margin-top: 0.2rem;
+  }
+
+  .node.orchestrator { border-color: var(--amber); background: var(--amber-dim); }
+  .node.orchestrator .tag   { color: var(--amber); }
+  .node.orchestrator .title { color: var(--amber-hi); }
+
+  .node.llm { border-color: var(--gold); background: var(--gold-dim); }
+  .node.llm .tag   { color: var(--gold); }
+  .node.llm .title { color: #d4a848; }
+
+  .node.decision { border-color: var(--orange); background: var(--orange-dim); }
+  .node.decision .tag   { color: var(--orange); }
+  .node.decision .title { color: #e07838; }
+
+  .node.tool { border-color: var(--olive); background: var(--olive-dim); text-align: center; }
+  .node.tool .tag   { color: var(--olive); }
+  .node.tool .title { color: #a8c840; font-size: 0.88rem; }
+  .node.tool .desc  { font-size: 0.72rem; }
+
+  /* Messages sub-card inside orchestrator */
+  .state-card {
+    margin-top: 0.85rem;
+    border: 1px dashed #3a2e18;
+    border-radius: 4px;
+    padding: 0.6rem 0.8rem;
+    background: #080700;
+  }
+  .state-card-label {
+    font-family: var(--mono);
+    font-size: 0.6rem;
+    color: var(--dim);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 0.3rem;
+  }
+  .state-card code {
+    font-family: var(--mono);
+    font-size: 0.73rem;
+    color: var(--text);
+    opacity: 0.75;
+  }
+
+  /* Stateless badge */
+  .badge {
+    display: inline-block;
+    border: 1px solid var(--gold);
+    background: var(--gold-dim);
+    color: var(--gold);
+    font-family: var(--mono);
+    font-size: 0.63rem;
+    padding: 0.12rem 0.45rem;
+    border-radius: 3px;
+    letter-spacing: 0.08em;
+    margin-top: 0.45rem;
+  }
+
+  /* Arrow connectors */
+  .arrow {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    padding: 4px 0;
+  }
+  .arrow .shaft {
+    width: 1px;
+    height: 18px;
+    background: var(--amber);
+    opacity: 0.35;
+  }
+  .arrow .alabel {
+    font-family: var(--mono);
+    font-size: 0.67rem;
+    color: var(--dim);
+    text-align: center;
+    padding: 3px 0;
+  }
+  .arrow .head {
+    width: 0;
+    height: 0;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-top: 7px solid var(--amber);
+    opacity: 0.4;
+  }
+  .arrow.gold .shaft { background: var(--gold); }
+  .arrow.gold .head  { border-top-color: var(--gold); }
+  .arrow.olive .shaft { background: var(--olive); }
+  .arrow.olive .head  { border-top-color: var(--olive); }
+
+  /* Tool grid */
+  .tool-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 0.75rem;
+    width: 100%;
+  }
+
+  /* Loop-back */
+  .loop-back {
+    margin-top: 1rem;
+    width: 100%;
+    border: 1px dashed var(--border);
+    border-radius: 6px;
+    padding: 0.75rem 1rem;
+    background: var(--surface);
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    font-family: var(--mono);
+    font-size: 0.73rem;
+    color: var(--dim);
+    line-height: 1.6;
+  }
+  .loop-symbol { color: var(--amber); font-size: 1.1rem; flex-shrink: 0; line-height: 1.4; }
+
+  /* Legend */
+  .legend {
+    display: flex;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+    margin-top: 1rem;
+    font-size: 0.78rem;
+    font-family: var(--mono);
+    color: var(--dim);
+  }
+  .legend-item { display: flex; align-items: center; gap: 0.4rem; }
+  .dot { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+
+  /* ── Divider ─────────────────────────────────────────────────── */
+  hr.divider { border: none; border-top: 1px solid var(--border); margin: 2.5rem 0; }
+
+  /* ── Pseudo code ─────────────────────────────────────────────── */
+  .pseudocode { margin-bottom: 2.5rem; }
+
+  pre {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.5rem;
+    overflow-x: auto;
+    font-family: var(--mono);
+    font-size: 0.82rem;
+    line-height: 1.8;
+    tab-size: 2;
+  }
+  .c-comment { color: var(--dim); }
+  .c-kw      { color: var(--amber-hi); font-weight: 600; }
+  .c-fn      { color: var(--gold); }
+  .c-str     { color: var(--olive); }
+  .c-const   { color: var(--orange); }
+
+  /* ── Takeaways ───────────────────────────────────────────────── */
+  .takeaways {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-top: 0.5rem;
+  }
+  .takeaway {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 1rem;
+  }
+  .takeaway .t-label {
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    margin-bottom: 0.4rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+  .takeaway .t-body { font-size: 0.82rem; color: var(--dim); }
+
+  .footer {
+    margin-top: 3rem;
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    color: var(--dim);
+    border-top: 1px solid var(--border);
+    padding-top: 1rem;
+  }
+
+  @media (max-width: 600px) {
+    .tool-grid, .takeaways { grid-template-columns: 1fr; }
+    .header h1 { font-size: 1.5rem; }
+  }
+</style>
+<link rel="icon" href="/favicon.ico">
+<link rel="stylesheet" href="/assets/css/site.css">
+</head>
+<body class="tool-page">
+<div class="site-chrome">
+<header>
+  <nav>
+    <div class="home-link">
+      <a href="/">Kevin Cunningham's Teaching Tools</a>
+    </div>
+    <p class="site-nav-link"><a href="https://kevincunningham.co.uk/">My blog</a></p>
+  </nav>
+</header>
+
+</div>
+
+<div class="page">
+
+  <div class="header">
+    <div class="eyebrow">AI Systems · Teaching Aid</div>
+    <h1>Agentic Loops</h1>
+    <p>How stateless LLM calls combine with a programmatic loop to create the illusion of a reasoning agent.</p>
+  </div>
+
+  <div class="insight">
+    <span class="label">KEY INSIGHT //</span>
+    <span>The LLM has no memory between calls. It is the <em>loop</em> — written by you — that maintains state, decides what to do next, and creates the appearance of sustained reasoning.</span>
+  </div>
+
+  <!-- DIAGRAM -->
+  <div class="diagram">
+    <div class="section-label">The loop, visualised</div>
+
+    <div class="flow">
+
+      <!-- Orchestrator — owns the messages array -->
+      <div class="node orchestrator">
+        <div class="tag">Orchestrator · your code</div>
+        <div class="title">Programmatic Loop</div>
+        <div class="desc">Holds all state. Decides when to stop. Dispatches tool calls.</div>
+        <div class="state-card">
+          <div class="state-card-label">owned state</div>
+          <code>messages = [ system, user, assistant, tool_result, assistant… ]</code>
+        </div>
+      </div>
+
+      <!-- Arrow → LLM -->
+      <div class="arrow">
+        <div class="shaft"></div>
+        <div class="alabel">passes full message history as prompt</div>
+        <div class="shaft"></div>
+        <div class="head"></div>
+      </div>
+
+      <!-- LLM -->
+      <div class="node llm">
+        <div class="tag">Stateless · each call is independent</div>
+        <div class="title">LLM Inference</div>
+        <div class="desc">Reads the full prompt. Produces text or a tool-call instruction. Then forgets everything.</div>
+        <div class="badge">no memory between calls</div>
+      </div>
+
+      <!-- Arrow → Decision -->
+      <div class="arrow gold">
+        <div class="shaft"></div>
+        <div class="alabel">returns: text or tool_call</div>
+        <div class="shaft"></div>
+        <div class="head"></div>
+      </div>
+
+      <!-- Decision -->
+      <div class="node decision">
+        <div class="tag">Branch · loop logic</div>
+        <div class="title">What did the LLM return?</div>
+        <div class="desc">The loop inspects the response type and routes accordingly. This branching lives in your code, not the model.</div>
+      </div>
+
+      <!-- Arrow → Tools -->
+      <div class="arrow olive">
+        <div class="shaft"></div>
+        <div class="alabel">if tool_call → execute the real function</div>
+        <div class="shaft"></div>
+        <div class="head"></div>
+      </div>
+
+      <!-- Tools -->
+      <div class="tool-grid">
+        <div class="node tool">
+          <div class="tag">Tool</div>
+          <div class="title">Web Search</div>
+          <div class="desc">Real function.<br>Real result.</div>
+        </div>
+        <div class="node tool">
+          <div class="tag">Tool</div>
+          <div class="title">Code Executor</div>
+          <div class="desc">Real function.<br>Real result.</div>
+        </div>
+        <div class="node tool">
+          <div class="tag">Tool</div>
+          <div class="title">Database / API</div>
+          <div class="desc">Real function.<br>Real result.</div>
+        </div>
+      </div>
+
+      <!-- Loop-back -->
+      <div class="loop-back">
+        <div class="loop-symbol">↺</div>
+        <div>Result appended to <code style="font-size:0.7rem;color:var(--text)">messages</code>. Loop calls the LLM again with the updated history. Continues until the LLM returns plain text with no tool call — or a stop condition is met.</div>
+      </div>
+
+    </div>
+
+    <div class="legend">
+      <div class="legend-item"><div class="dot" style="background:var(--amber)"></div>orchestrator / your code</div>
+      <div class="legend-item"><div class="dot" style="background:var(--gold)"></div>LLM (stateless)</div>
+      <div class="legend-item"><div class="dot" style="background:var(--olive)"></div>tool execution</div>
+      <div class="legend-item"><div class="dot" style="background:var(--orange)"></div>loop decision</div>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <!-- PSEUDO CODE -->
+  <div class="pseudocode">
+    <div class="section-label">Pseudo code</div>
+
+<pre><span class="c-comment"># ── State lives HERE, not inside the LLM ─────────────────────────</span>
+
+<span class="c-kw">messages</span> = [
+  { role: <span class="c-str">"system"</span>,  content: <span class="c-str">"You are a helpful agent. Use tools when needed."</span> },
+  { role: <span class="c-str">"user"</span>,    content: user_input }
+]
+
+<span class="c-kw">tools</span> = [web_search, run_code, query_database]   <span class="c-comment"># real functions</span>
+
+
+<span class="c-comment"># ── The loop ──────────────────────────────────────────────────────</span>
+
+<span class="c-kw">while</span> <span class="c-const">True</span>:
+
+  <span class="c-comment"># Every call replays the full history — LLM sees nothing else</span>
+  response = <span class="c-fn">call_llm</span>(messages, tools)
+
+
+  <span class="c-comment"># Branch on what came back</span>
+  <span class="c-kw">if</span> response.type == <span class="c-str">"text"</span>:
+
+    <span class="c-fn">show_to_user</span>(response.text)
+    <span class="c-kw">break</span>                        <span class="c-comment"># agent is done</span>
+
+
+  <span class="c-kw">elif</span> response.type == <span class="c-str">"tool_call"</span>:
+
+    tool   = <span class="c-fn">find_tool</span>(response.tool_name)
+    result = <span class="c-fn">tool.run</span>(response.tool_args)  <span class="c-comment"># real side-effect</span>
+
+    <span class="c-comment"># Append both sides so the LLM sees them next iteration</span>
+    messages.<span class="c-fn">append</span>({ role: <span class="c-str">"assistant"</span>, content: response })
+    messages.<span class="c-fn">append</span>({ role: <span class="c-str">"tool"</span>,      content: result })
+
+    <span class="c-comment"># ↑ This is where "memory" comes from — NOT from the LLM</span>
+    <span class="c-kw">continue</span>                     <span class="c-comment"># go round again</span>
+
+
+  <span class="c-kw">elif</span> <span class="c-fn">max_iterations_reached</span>():
+
+    <span class="c-fn">handle_timeout</span>()             <span class="c-comment"># safety valve — also your code</span>
+    <span class="c-kw">break</span></pre>
+  </div>
+
+  <hr class="divider">
+
+  <!-- TAKEAWAYS -->
+  <div class="section-label">What this means in practice</div>
+  <div class="takeaways">
+
+    <div class="takeaway">
+      <div class="t-label" style="color:var(--amber)">Costs scale with history</div>
+      <div class="t-body">Every loop iteration sends the full conversation. Longer history = more tokens = more cost and latency. Summarisation strategies exist for long-running agents.</div>
+    </div>
+
+    <div class="takeaway">
+      <div class="t-label" style="color:var(--gold)">You own the stop condition</div>
+      <div class="t-body">The LLM cannot stop the loop — only return text. Your code decides when to halt. Always set a max iteration guard to prevent runaway agents.</div>
+    </div>
+
+    <div class="takeaway">
+      <div class="t-label" style="color:var(--olive)">Tools are just functions</div>
+      <div class="t-body">The LLM outputs a tool name and arguments as structured text. Your loop parses that and calls the real function. The LLM never executes anything directly.</div>
+    </div>
+
+    <div class="takeaway">
+      <div class="t-label" style="color:var(--orange)">Debugging is loop debugging</div>
+      <div class="t-body">When an agent misbehaves, inspect the messages array at each step. The LLM responded to exactly what it was given — the answer is usually in the history.</div>
+    </div>
+
+  </div>
+
+  <div class="footer">
+    doing and learning · teaching aid · agentic loops
+  </div>
+
+</div>
+<div class="tool-chrome-footer">
+<footer>
+  <p>&copy; 2026 Kevin Cunningham</p>
+</footer>
+
+</div>
+
+</body>
+</html>

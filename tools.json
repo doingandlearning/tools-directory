@@ -1,5 +1,13 @@
 [
   {
+    "filename": "agentic-loop.html",
+    "slug": "agentic-loop",
+    "title": "Agentic Loops",
+    "created": "2026-06-24T16:58:01.348870+01:00",
+    "updated": "2026-06-24T17:06:00.678873+01:00",
+    "url": "/agentic-loop"
+  },
+  {
     "filename": "csp-console.html",
     "slug": "csp-console",
     "title": "CSP Console — Content-Security-Policy demo",
