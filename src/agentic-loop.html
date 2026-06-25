@@ -439,6 +439,11 @@
 
 <span class="c-kw">while</span> <span class="c-const">True</span>:
 
+  <span class="c-comment"># Safety valve — checked BEFORE the LLM call so it always fires</span>
+  <span class="c-kw">if</span> <span class="c-fn">max_iterations_reached</span>():
+    <span class="c-fn">handle_timeout</span>()
+    <span class="c-kw">break</span>
+
   <span class="c-comment"># Every call replays the full history — LLM sees nothing else</span>
   response = <span class="c-fn">call_llm</span>(messages, tools)
 
@@ -460,13 +465,7 @@
     messages.<span class="c-fn">append</span>({ role: <span class="c-str">"tool"</span>,      content: result })
 
     <span class="c-comment"># ↑ This is where "memory" comes from — NOT from the LLM</span>
-    <span class="c-kw">continue</span>                     <span class="c-comment"># go round again</span>
-
-
-  <span class="c-kw">elif</span> <span class="c-fn">max_iterations_reached</span>():
-
-    <span class="c-fn">handle_timeout</span>()             <span class="c-comment"># safety valve — also your code</span>
-    <span class="c-kw">break</span></pre>
+    <span class="c-kw">continue</span>                     <span class="c-comment"># go round again</span></pre>
   </div>
 
   <hr class="divider">
